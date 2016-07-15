@@ -7,19 +7,16 @@ Parse.Cloud.define('requestCharge', function(req, res){
   var query = new Parse.Query("Requests");
   query.get(req.params.objectId, {
     success: function(result) {
-      console.log(result)
-      var pickupDate = new Date.parse(result.pickup_time);
-      console.log(pickupDate);
-      console.log(pickupDate.getDay());
-
-      // var pickupDateUTC = Date.UTC(pickupDate.getYear(), pickupDate.getMonth(), pickupDate.getDay(), pickupDate.getHours(), pickupDate.getMinutes());
-      // console.log(pickupDateUTC);
-      // console.log(pickupDate);
-      // var pickupTimeHours = Date(result.pickup_time).getUTCHours();
-      // var pickupTimeMinutes = Date(result.pickup_time).getUTCMinutes() / 60;
-      // console.log(pickupTimeHours);
-      // console.log(pickupTimeMinutes);
-      res.success(result);
+      if (result.get("pickup_time") != null && result.get("completed_time") != null) {
+        var pickupDate = new Date(result.get("pickup_time"));
+        var utcPickupHours = pickupDate.getUTCHours() + (pickupDate.getUTCMinutes() / 60);
+        var completionDate = new Date(result.get("completed_time"));
+        var utcCompletionDateHours = completionDate.getUTCHours() + (completionDate.getUTCMinutes() / 60);
+        var difference = utcCompletionDateHours - utcPickupHours;
+        res.success({"charge":difference*100});
+      } else {
+        res.error("pickup time or completed time not set");
+      }
     },
 
     error: function(error) {
