@@ -100,7 +100,6 @@ Parse.Cloud.define('createCharge', function(request, response) {
   // captainID
   // passengerID
   // product ID
-
   // lookup captain object
   var user;
   var captain;
