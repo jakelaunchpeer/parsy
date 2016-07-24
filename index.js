@@ -2,6 +2,7 @@
 // compatible API routes.
 
 var express = require('express');
+
 var ParseServer = require('parse-server').ParseServer;
 var path = require('path');
 
@@ -17,7 +18,7 @@ var api = new ParseServer({
   databaseURI: databaseUri || 'mongodb://heroku_66mrm91m:5qevhrs5imbqfr6v7hae2jgvir@ds023644.mlab.com:23644/heroku_66mrm91m',
   cloud: process.env.CLOUD_CODE_MAIN || __dirname + '/cloud/main.js',
   appId: process.env.APP_ID || 'myAppId',
-  masterKey: process.env.MASTER_KEY || '', //Add your master key here. Keep it secret!
+  masterKey: process.env.MASTER_KEY || 'master', //Add your master key here. Keep it secret!
   serverURL: process.env.SERVER_URL || 'http://localhost:1337/parse',  // Don't forget to change to https if needed
   liveQuery: {
     classNames: ["Request"] // List of classes to support for query subscriptions
