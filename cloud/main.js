@@ -43,6 +43,61 @@ Parse.Cloud.define('requestCharge', function(req, res){
 
 });
 
+Parse.Cloud.define('pickupRequest', function(request, response) {
+  // to ensure fairness we allow the server to set timestamps for pickup and delivery of people.
+  // prevents users from manipulating timestamps by changing devices time
+
+  // parameters:
+  // 1. request ID
+  // 2. captain object id
+
+  var params = request.params;
+  // find the request by ID
+  var RequestClass = Parse.Object.extend("Request");
+  var request = new RequestClass();
+
+  var query = new Parse.Query(request)
+  query.get(params.objectId, {
+    success: function(object) {
+      console.log(object);
+      // verify request not canceled
+      console.log(object.captain);
+      if (object.get("cancelled") == true || object.get("captain") != null) {
+        response.error("Request was cancelled or has already been picked up by another captain");
+      } else {
+        // request not cancelled and doesn't have a captain
+        var findCaptainQuery = new Parse.Query(Parse.User);
+        findCaptainQuery.get(params.captainId, {
+          success: function(user) {
+            object.set("captain", user);
+            object.set("pickup_time", new Date());
+            object.save(null, {
+              success: function(object) {
+                response.success(object)
+
+              },
+              error: function(error) {
+                response.error(error);
+              }
+            });
+          },
+          error: function(error) {
+            response.error("Captain does not exist " + params.captainId);
+          }
+        });
+      }
+    },
+    error: function(error) {
+      response.error(error);
+    }
+  });
+
+});
+
+Parse.Cloud.define('createCharge', function(request, response) {
+
+});
+
 Parse.Cloud.define('createCustomer', function(request, response){
   Parse.Cloud.useMasterKey();
   var params = request.params;
