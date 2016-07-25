@@ -1,33 +1,14 @@
+// TODO: get this value from a server parameter not hard coded!
 var stripe = require("stripe")(
     "sk_test_A9QMRVzF28BbkDdEDBlo8JhH"
 );
 Parse.Cloud.define('hello', function(req, res) {
   res.success('Hi');
 });
-
-Parse.Cloud.define('requestCharge', function(req, res){
-  console.log(req);
-  var query = new Parse.Query("Requests");
-  query.get(req.params.objectId, {
-    success: function(result) {
-      if (result.get("pickup_time") != null && result.get("completed_time") != null) {
-        var pickupDate = new Date(result.get("pickup_time"));
-        var utcPickupHours = pickupDate.getUTCHours() + (pickupDate.getUTCMinutes() / 60);
-        var completionDate = new Date(result.get("completed_time"));
-        var utcCompletionDateHours = completionDate.getUTCHours() + (completionDate.getUTCMinutes() / 60);
-        var difference = utcCompletionDateHours - utcPickupHours;
-        res.success({"charge":difference*100});
-      } else {
-        res.error("pickup time or completed time not set");
-      }
-    },
-
-    error: function(error) {
-      res.error(error);
-    }
-  });
-});
-
+/*
+ * Marks when the captain drops off passengers.  UTC server timestamp is used for this value.
+ * Parameter: requestId (objectId of the request object).
+ */
 Parse.Cloud.define('dropoffRequest', function(request, response){
     if (request.params.requestId != null) {
         var params = request.params;
@@ -47,6 +28,10 @@ Parse.Cloud.define('dropoffRequest', function(request, response){
     }
 });
 
+/*
+ * Use the server's timestamp to deter clock manipulation on client.  Prevents captains from fast forwarding clock.
+ * Also eliminates time zone issues all times are UTC server time.
+ */
 Parse.Cloud.define('pickupRequest', function(request, response) {
   // to ensure fairness we allow the server to set timestamps for pickup and delivery of people.
   // prevents users from manipulating timestamps by changing devices time
@@ -63,7 +48,18 @@ Parse.Cloud.define('pickupRequest', function(request, response) {
         response.error("Request parameters not met");
     }
 });
-
+/*
+* Calculates a charge for the passenger.  Calculation is based on a per hour rate defined in the product model
+* The calculation is rounded to nearest 100th decimal using the round function.
+*   Example: 3.983 => 3.98
+*   Currency in USD
+*   Round formula Math.round((totalTime * cost_product * 100)/100)
+*/
+// TODO: This should invoke the Stripe API and charge the user.
+/*
+ * Creates a charge request for a passenger.  We tie Parse User ObjectID's to the Stripe ID when creating a customer.
+ * Use the Parse User ID to retrieve/charge a Stripe Customer.
+ */
 Parse.Cloud.define('createCharge', function(request, response) {
   // captainID
   // passengerID
@@ -122,7 +118,11 @@ Parse.Cloud.define('createCharge', function(request, response) {
     response.error(error);
   });
 });
-
+/*
+* Creates a customer on stripe.  If customer already exists it will update their payment information with the new credit
+* card. Use Parse User ObjectID to set the Customer ID for a Stripe customer.  ObjectID's are guaranteed unique as per
+* MongoDB documentation.  Collision shouldn't be a problem here.
+* */
 Parse.Cloud.define('createCustomer', function(request, response){
   Parse.Cloud.useMasterKey();
   var params = request.params;
