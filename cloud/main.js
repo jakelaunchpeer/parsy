@@ -26,74 +26,42 @@ Parse.Cloud.define('requestCharge', function(req, res){
       res.error(error);
     }
   });
-  // if (req.params.objectId != null) {
-  //   console.log(req.params.objectId);
-  // }
-  // query.equalTo("objectId", req.params.objectId);
-  // query.find({
-  //   success: function(result) {
-  //     if (result.length)
-  //     res.success(result[0]);
-  //   },
-  //
-  //   error: function(error) {
-  //     res.error(error);
-  //   }
-  // });
+});
 
+Parse.Cloud.define('dropoffRequest', function(request, response){
+    if (request.params.requestId != null) {
+        var params = request.params;
+        var userRequest;
+        findRequestById(params.requestId).then(function(requestObject) {
+            userRequest = requestObject;
+            userRequest.set("drop_off_time", new Date());
+            return userRequest.save();
+        }).then(function(requestObject) {
+            userRequest = requestObject;
+            response.success(requestObject);
+        }, function(error) {
+            response.error(error);
+        });
+    } else {
+        response.error("Required parameters not met");
+    }
 });
 
 Parse.Cloud.define('pickupRequest', function(request, response) {
   // to ensure fairness we allow the server to set timestamps for pickup and delivery of people.
   // prevents users from manipulating timestamps by changing devices time
-
-  // parameters:
-  // 1. request ID
-  // 2. captain object id
-  if (request.params.objectId != null && request.params.captainId != null) {
-    var params = request.params;
-    // find the request by ID
-    var RequestClass = Parse.Object.extend("Request");
-    var request = new RequestClass();
-
-    var query = new Parse.Query(request)
-    query.get(params.objectId, {
-      success: function(object) {
-        console.log(object);
-        // verify request not canceled
-        console.log(object.captain);
-        if (object.get("cancelled") == true || object.get("captain") != null) {
-          response.error("Request was cancelled or has already been picked up by another captain");
-        } else {
-          // request not cancelled and doesn't have a captain
-          var findCaptainQuery = new Parse.Query(Parse.User);
-          findCaptainQuery.get(params.captainId, {
-            success: function(user) {
-              object.set("captain", user);
-              object.set("pickup_time", new Date());
-              object.save(null, {
-                success: function(object) {
-                  response.success(object)
-
-                },
-                error: function(error) {
-                  response.error(error);
-                }
-              });
-            },
-            error: function(error) {
-              response.error("Captain does not exist " + params.captainId);
-            }
-          });
-        }
-      },
-      error: function(error) {
-        response.error(error);
-      }
-    });
-  } else {
-    response.error("Required parameters not met");
-  }
+    if (request.params.requestId != null) {
+        findRequestById(request.params.requestId).then(function(requestObject) {
+            requestObject.set("pickup_time", new Date());
+            return requestObject.save();
+        }).then(function(result) {
+            response.success(result);
+        }, function(error) {
+            response.error(error);
+        });
+    } else {
+        response.error("Request parameters not met");
+    }
 });
 
 Parse.Cloud.define('createCharge', function(request, response) {
@@ -106,7 +74,7 @@ Parse.Cloud.define('createCharge', function(request, response) {
   var userRequest;
   var product;
   findUserById(request.params.userId).then(function(userObject){
-    // got user
+    // got requester user
     user = userObject;
     return user;
   }).then(function() {
@@ -114,6 +82,10 @@ Parse.Cloud.define('createCharge', function(request, response) {
   }).then(function(captainObject){
     // got a captain
     captain = captainObject;
+      var checkCaptainStatus = new Parse.Promise();
+      if (captain.get("captain_status") == null || captain.get("captain_status") == false) {
+          return checkCaptainStatus.reject("Non-Captains cannot make charges to users");
+      }
     return findRequestById(request.params.requestId)
   }).then(function(requestObject) {
     // find request by id
@@ -154,7 +126,7 @@ Parse.Cloud.define('createCharge', function(request, response) {
 Parse.Cloud.define('createCustomer', function(request, response){
   Parse.Cloud.useMasterKey();
   var params = request.params;
-  if(params.objectId != null && params.exp_month != null, params.exp_year != null, params.number != null, params.cvc != null) {
+  if(params.objectId != null && params.exp_month != null && params.exp_year != null && params.number != null && params.cvc != null) {
     var query = new Parse.Query(Parse.User);
     query.get(params.objectId, {
       success: function(user) {
@@ -239,6 +211,7 @@ Parse.Cloud.define('createCustomer', function(request, response){
         }
       },
       error: function(error) {
+          console.log(error);
         response.error("User with ID " + params.objectId + " does not exist!");
       }
     });
@@ -255,12 +228,13 @@ function findProductById(id) {
   var promise = new Parse.Promise();
   var RequestClass = Parse.Object.extend("Product");
   var request = new RequestClass();
-  var query = new Parse.Query(request)
+  var query = new Parse.Query(request);
   query.get(id, {
     success: function(requestObject) {
       promise.resolve(requestObject);
     },
     error: function(error) {
+        console.log(error);
       promise.reject("Request with id "+id+" does not exist");
     }
   });
@@ -278,6 +252,7 @@ function findRequestById(id) {
       promise.resolve(requestObject);
     },
     error: function(error) {
+        console.log(error);
       promise.reject("Request with id "+id+" does not exist");
     }
   });
@@ -293,6 +268,7 @@ function findUserById(id) {
       promise.resolve(user);
     },
     error: function(error) {
+        console.log(error);
       promise.reject("User with id " + id + " does not exist");
     }
   });
