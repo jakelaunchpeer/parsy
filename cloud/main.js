@@ -54,9 +54,9 @@ Parse.Cloud.define('pickupRequest', function(request, response) {
 *   Example: 3.983 => 3.98
 *   Currency in USD
 *   Round formula Math.round((totalTime * cost_product * 100)/100)
-*/
+*
 // TODO: This should invoke the Stripe API and charge the user.
-/*
+ *
  * Creates a charge request for a passenger.  We tie Parse User ObjectID's to the Stripe ID when creating a customer.
  * Use the Parse User ID to retrieve/charge a Stripe Customer.
  */
