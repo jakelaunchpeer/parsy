@@ -248,7 +248,7 @@ function findProductById(id) {
     },
     error: function(error) {
         console.log(error);
-      promise.reject("Request with id "+id+" does not exist");
+      promise.reject("Request with id "+id+" does not exist" + error);
     }
   });
   return promise;
