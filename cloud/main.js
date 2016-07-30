@@ -61,6 +61,20 @@ Parse.Cloud.define('pickupRequest', function(request, response) {
         response.error("Request parameters not met");
     }
 });
+
+Parse.Cloud.define('getRequest', function(request, response){
+  if (request.params.requestId != null) {
+    findRequestById(request.params.requestId).then(function(requestObject){
+      response.success(requestObject);
+    }, function(error){
+      response.error("Object with ID " + request.params.objectId + " does not exist");
+    });
+  } else {
+    response.error("Request ID was not given");
+  }
+
+});
+
 /*
 * Calculates a charge for the passenger.  Calculation is based on a per hour rate defined in the product model
 * The calculation is rounded to nearest 100th decimal using the round function.
