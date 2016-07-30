@@ -5,6 +5,19 @@ var stripe = require("stripe")(
 Parse.Cloud.define('hello', function(req, res) {
   res.success('Hi');
 });
+
+/* Passengers need to make a request and be placed in a waiting queue. 
+   We ensure the user doesn't have any pending requests.  
+
+   Requests can be cancelled iff it doesn't have a charge / doesn't have a pickup time. 
+
+   if the user hasn't been assigned a captain, doesn't have a charge or pickup time, then they can cancel the request. 
+*/
+Parse.Cloud.define('createRequest', function(request, response){
+  response.success(request);
+});
+
+
 /*
  * Marks when the captain drops off passengers.  UTC server timestamp is used for this value.
  * Parameter: requestId (objectId of the request object).
