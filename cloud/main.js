@@ -67,7 +67,7 @@ Parse.Cloud.define('getRequest', function(request, response){
     findRequestById(request.params.requestId).then(function(requestObject){
       response.success(requestObject);
     }, function(error){
-      response.error("Object with ID " + request.params.objectId + " does not exist");
+      response.error("Object with ID " + request.params.requestId + " does not exist");
     });
   } else {
     response.error("Request ID was not given");
