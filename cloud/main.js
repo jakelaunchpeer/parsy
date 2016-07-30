@@ -273,14 +273,16 @@ function findRequestById(id) {
   var RequestClass = Parse.Object.extend("Request");
   var request = new RequestClass();
   var query = new Parse.Query(request);
+  query.equalTo("objectId", id);
   query.include("product");
-  query.get(id, {
-    success: function(requestObject) {
-      promise.resolve(requestObject);
+  query.find({
+    success: function(results) {
+      console.log(results.length);
+      promise.resolve(results);
     },
     error: function(error) {
-        console.log(error);
-      promise.reject("Request with id "+id+" does not exist");
+      console.log(error);
+      promise.reject(error);
     }
   });
   return promise;
@@ -288,6 +290,7 @@ function findRequestById(id) {
 
 function findUserById(id) {
   console.log("Finding user with id " + id);
+  Parse.Cloud.useMasterKey();
   var query = new Parse.Query(Parse.User);
   var promise = new Parse.Promise();
   query.get(id, {
