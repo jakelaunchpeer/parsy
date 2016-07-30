@@ -17,8 +17,8 @@ console.log('Starting Parse Server');
 var api = new ParseServer({
   databaseURI: databaseUri || 'mongodb://heroku_66mrm91m:5qevhrs5imbqfr6v7hae2jgvir@ds023644.mlab.com:23644/heroku_66mrm91m',
   cloud: process.env.CLOUD_CODE_MAIN || __dirname + '/cloud/main.js',
-  appId: process.env.APP_ID || 'myAppId',
-  masterKey: process.env.MASTER_KEY || 'master', //Add your master key here. Keep it secret!
+  appId: process.env.APP_ID || 'bra',
+  masterKey: process.env.MASTER_KEY || 'Timoshii1!', //Add your master key here. Keep it secret!
   serverURL: process.env.SERVER_URL || 'http://localhost:1337/parse',  // Don't forget to change to https if needed
   liveQuery: {
     classNames: ["Request", "Tracking"] // List of classes to support for query subscriptions

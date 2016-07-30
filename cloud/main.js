@@ -75,6 +75,19 @@ Parse.Cloud.define('getRequest', function(request, response){
 
 });
 
+Parse.Cloud.define('getAllRequests', function(request, response){
+  var Request = Parse.Object.extend("Request");
+  var query = new Parse.Query(Request);
+  query.find({
+    success: function(results) {
+      response.success(results);
+    }, 
+    error: function(error) {
+      response.error(error);
+    }
+  });
+});
+
 /*
 * Calculates a charge for the passenger.  Calculation is based on a per hour rate defined in the product model
 * The calculation is rounded to nearest 100th decimal using the round function.
