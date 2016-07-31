@@ -137,6 +137,7 @@ Parse.Cloud.define('createCharge', function(request, response) {
   var captain;
   var userRequest;
   var product;
+  var charge = new Parse.Object.extend("Charge");
   findUserById(request.params.userId).then(function(userObject){
     // got requester user
     console.log("got user");
@@ -201,6 +202,7 @@ Parse.Cloud.define('createCharge', function(request, response) {
     charge.set("totalCharge", chargeTotal);
     return charge.save();
   }).then(function(chargeObject){
+    this.charge = chargeObject;
     console.log(chargeObject);
     userRequest.set("chargeAmount", chargeObject.get("totalCharge"));
     userRequest.set("charge", chargeObject);
@@ -218,11 +220,12 @@ Parse.Cloud.define('createCharge', function(request, response) {
     return chargePassenger(userRequest.get("chargeAmount"), customer.id);
   }).then(function(charge){
     console.log(charge);
-    response.success(charge);
     userRequest.set("chargeCompleted", true);
+    console.log(userRequest);
     return userRequest.save();
-  }).then(function(requestObject){
-    response.success(requestObject);
+  }).then(function(userRequest){
+    console.log(userRequest);
+    response.success(userRequest);
   }, function(error){
     console.log(error);
     response.error(error);
@@ -338,7 +341,8 @@ function chargePassenger(amount, customerId) {
   var promise = new Parse.Promise();
   // lookup user on stripe and verify they have a valid payment method.
   // stripe requires all charges to be converted to "cents"
-  var chargeInCents = Math.floor(amount * 100);
+  var surcharge = 40;
+  var chargeInCents = Math.floor((amount+surcharge) * 100);
   stripe.charges.create({
     amount:chargeInCents,
     currency: "usd",
