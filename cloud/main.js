@@ -203,6 +203,7 @@ Parse.Cloud.define('createCharge', function(request, response) {
   }).then(function(chargeObject){
     console.log(chargeObject);
     userRequest.set("chargeAmount", chargeObject.get("totalCharge"));
+    userRequest.set("charge", chargeObject);
     return userRequest.save();
   }).then(function(requestObject) {
     return lookupStripeCustomer(request.params.userId);
