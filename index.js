@@ -20,6 +20,8 @@ var api = new ParseServer({
   appId: process.env.APP_ID || 'bra',
   masterKey: process.env.MASTER_KEY || 'Timoshii1!', //Add your master key here. Keep it secret!
   serverURL: process.env.SERVER_URL || 'http://localhost:1337/parse',  // Don't forget to change to https if needed
+  jsonLogs: 1, 
+  verbose: 1,
   liveQuery: {
     classNames: ["Request", "LocationTracking"] // List of classes to support for query subscriptions
   }
