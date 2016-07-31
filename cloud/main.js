@@ -14,9 +14,21 @@ Parse.Cloud.define('hello', function(req, res) {
    if the user hasn't been assigned a captain, doesn't have a charge or pickup time, then they can cancel the request. 
 */
 Parse.Cloud.define('createRequest', function(request, response){
-  response.success(request);
+  
 });
 
+Parse.Cloud.define('getAllProducts', function(request, response){
+  var Products = new Parse.Object.extend("Products");
+  var query = new Parse.Query(Products);
+  query.find({
+    success: function(products) {
+      response.success(products);
+    },
+    error: function(error) {
+      response.error(error);
+    }
+  });
+});
 
 /*
  * Marks when the captain drops off passengers.  UTC server timestamp is used for this value.
@@ -45,22 +57,31 @@ Parse.Cloud.define('dropoffRequest', function(request, response){
  * Use the server's timestamp to deter clock manipulation on client.  Prevents captains from fast forwarding clock.
  * Also eliminates time zone issues all times are UTC server time.
  */
-Parse.Cloud.define('pickupRequest', function(request, response) {
-  // to ensure fairness we allow the server to set timestamps for pickup and delivery of people.
-  // prevents users from manipulating timestamps by changing devices time
-    if (request.params.requestId != null) {
-        findRequestById(request.params.requestId).then(function(requestObject) {
-            requestObject.set("pickup_time", new Date());
-            return requestObject.save();
-        }).then(function(result) {
-            response.success(result);
-        }, function(error) {
-            response.error(error);
-        });
-    } else {
-        response.error("Request parameters not met");
-    }
-});
+Parse.Cloud.define('pickupRequest', function(request, response){
+  console.log(request.params);
+  if(request.params.requestId != null && request.params.userId != null) {
+    var promise = new Parse.Promise();
+    var captainUser;
+    var pickupRequest;
+    findUserById(request.params.userId).then(function(user){
+      console.log(user);
+      captainUser = user;
+      return findRequestById(request.params.requestId);
+    }).then(function(object){
+      pickupRequest = object;
+      pickupRequest.set("captain", captainUser);
+      pickupRequest.set("pickupTime", new Date());
+      return pickupRequest.save();
+    }).then(function(savedRequest){
+      response.success(savedRequest);
+    }, function(error){
+      response.error(error);
+    });
+  } else {
+    response.error("Required parameters 'requestId' and 'userId' not given");
+  }
+  
+})
 
 Parse.Cloud.define('getRequest', function(request, response){
   if (request.params.requestId != null) {
@@ -78,6 +99,9 @@ Parse.Cloud.define('getRequest', function(request, response){
 Parse.Cloud.define('getAllRequests', function(request, response){
   var Request = Parse.Object.extend("Request");
   var query = new Parse.Query(Request);
+  query.include("requester");
+  query.include("captain");
+  query.include("product");
   query.find({
     success: function(results) {
       response.success(results);
@@ -288,16 +312,26 @@ function findRequestById(id) {
   var query = new Parse.Query(request);
   query.equalTo("objectId", id);
   query.include("product");
-  query.find({
-    success: function(results) {
-      console.log(results.length);
-      promise.resolve(results);
+  query.include("requester");
+  query.include("captain");
+  query.get(id, {
+    success: function(object) {
+      promise.resolve(object);
     },
     error: function(error) {
-      console.log(error);
       promise.reject(error);
     }
   });
+  // query.find({
+  //   success: function(results) {
+  //     console.log(results.length);
+  //     promise.resolve(results);
+  //   },
+  //   error: function(error) {
+  //     console.log(error);
+  //     promise.reject(error);
+  //   }
+  // });
   return promise;
 }
 
