@@ -14,7 +14,11 @@ Parse.Cloud.define('hello', function(req, res) {
    if the user hasn't been assigned a captain, doesn't have a charge or pickup time, then they can cancel the request. 
 */
 Parse.Cloud.define('createRequest', function(request, response){
-  
+  var Request = new Parse.Object.extend("Request");
+  var newRequest = new Request();
+  if (request.params.userId != null) {
+
+  }
 });
 
 Parse.Cloud.define('getAllProducts', function(request, response){
@@ -156,16 +160,23 @@ Parse.Cloud.define('createCharge', function(request, response) {
     // find request by id
     console.log(requestObject.get("pickupTime"));
     console.log(requestObject.get("id"));
+    console.log(requestObject.get("chargeCompleted"));
     if (requestObject.get("pickupTime") == null){
       throw "Request has not been picked up yet so it cannot be charged"
     }
-    if (requestObject.get("chargeCompleted") != null || requestObject.get("chargeCompleted") == true) {
+    if (requestObject.get("chargeCompleted") == true && requestObject.get("chargeCompleted") != null) {
       throw "This request has already been completed and was charged " + requestObject.get("chargeAmount") + ".  The request was completed on " + requestObject.get("dropoffTime");
     }
     console.log("request found");
     console.log(requestObject);
     userRequest = requestObject;
-    userRequest.set("dropoffTime", new Date());
+        // a captain may retry to charge the passenger if the first attempt fails (stripe customer failures, etc.). 
+    // save the initial request dropoffTime
+    if (userRequest.get("dropoffTime") == null) {
+      // don't reset the dropoff time
+      userRequest.set("dropoffTime", new Date());
+    }
+    
     return findProductById(request.params.productId);
   }).then(function(productResult) {
     // got the product
@@ -179,6 +190,9 @@ Parse.Cloud.define('createCharge', function(request, response) {
     charge.set("passenger", user);
     charge.set("captain", captain);
     // calculate total charge
+    if (userRequest.get("product") == null) {
+      throw "User did not select a product so we cannot calculate a charge";
+    }
     console.log(userRequest.get("pickupTime"));
     console.log(userRequest.get("dropoffTime"));
     console.log(new Date(userRequest.get("dropoffTime")) - new Date(userRequest.get("pickupTime")));
