@@ -135,22 +135,37 @@ Parse.Cloud.define('createCharge', function(request, response) {
   var product;
   findUserById(request.params.userId).then(function(userObject){
     // got requester user
+    console.log("got user");
+    console.log(userObject);
+
     user = userObject;
     return user;
   }).then(function() {
     return findUserById(request.params.captainId)
   }).then(function(captainObject){
     // got a captain
+    console.log("got captain");
+    console.log(captainObject);
     captain = captainObject;
-      var checkCaptainStatus = new Parse.Promise();
-      if (captain.get("captain_status") == null || captain.get("captain_status") == false) {
-          return checkCaptainStatus.reject("Non-Captains cannot make charges to users");
-      }
-    return findRequestById(request.params.requestId)
+    var checkCaptainStatus = new Parse.Promise();
+    if (captain.get("captainStatus") == null || captain.get("captainStatus") == false) {
+      throw "Tried to assign a non-captain user to a request.";
+    }
+    return findRequestById(request.params.requestId);
   }).then(function(requestObject) {
     // find request by id
+    console.log(requestObject.get("pickupTime"));
+    console.log(requestObject.get("id"));
+    if (requestObject.get("pickupTime") == null){
+      throw "Request has not been picked up yet so it cannot be charged"
+    }
+    if (requestObject.get("chargeCompleted") != null || requestObject.get("chargeCompleted") == true) {
+      throw "This request has already been completed and was charged " + requestObject.get("chargeAmount") + ".  The request was completed on " + requestObject.get("dropoffTime");
+    }
+    console.log("request found");
+    console.log(requestObject);
     userRequest = requestObject;
-    userRequest.set("drop_off_time", new Date());
+    userRequest.set("dropoffTime", new Date());
     return findProductById(request.params.productId);
   }).then(function(productResult) {
     // got the product
@@ -164,21 +179,37 @@ Parse.Cloud.define('createCharge', function(request, response) {
     charge.set("passenger", user);
     charge.set("captain", captain);
     // calculate total charge
-    console.log(userRequest.get("pickup_time"));
-    console.log(userRequest.get("drop_off_time"));
-    console.log(new Date(userRequest.get("drop_off_time")) - new Date(userRequest.get("pickup_time")));
-    var totalTime = (new Date(userRequest.get("drop_off_time")) - new Date(userRequest.get("pickup_time")))/1000/60/60;
+    console.log(userRequest.get("pickupTime"));
+    console.log(userRequest.get("dropoffTime"));
+    console.log(new Date(userRequest.get("dropoffTime")) - new Date(userRequest.get("pickupTime")));
+    var totalTime = (new Date(userRequest.get("dropoffTime")) - new Date(userRequest.get("pickupTime")))/1000/60/60;
     var chargeTotal = Math.round(totalTime * product.get("price")*100)/100;
-    charge.set("total_charge", chargeTotal);
+    charge.set("totalCharge", chargeTotal);
     return charge.save();
   }).then(function(chargeObject){
     console.log(chargeObject);
-    userRequest.set("charge", chargeObject);
+    userRequest.set("chargeAmount", chargeObject.get("totalCharge"));
     return userRequest.save();
   }).then(function(requestObject) {
-    console.log(requestObject);
+    return lookupStripeCustomer(request.params.userId);
+  }).then(function(stripeCustomer){
+    console.log(stripeCustomer);
+    return stripeCustomer;
+  }).then(function(customer){
+    console.log(customer);
+    if (customer.id == null ){
+      throw "the customer with id " + request.params.objectId + " does not exist"
+    }
+    return chargePassenger(userRequest.get("chargeAmount"), customer.id);
+  }).then(function(charge){
+    console.log(charge);
+    response.success(charge);
+    userRequest.set("chargeCompleted", true);
+    return userRequest.save();
+  }).then(function(requestObject){
     response.success(requestObject);
-  }, function(error) {
+  }, function(error){
+    console.log(error);
     response.error(error);
   });
 });
@@ -288,9 +319,40 @@ Parse.Cloud.define('requestChargeEstimate', function(request, response){
 
 });
 
+function chargePassenger(amount, customerId) {
+  var promise = new Parse.Promise();
+  // lookup user on stripe and verify they have a valid payment method.
+  // stripe requires all charges to be converted to "cents"
+  var chargeInCents = Math.floor(amount * 100);
+  stripe.charges.create({
+    amount:chargeInCents,
+    currency: "usd",
+    customer: customerId
+  }, function(err, charge){
+    if (err == null) {
+      promise.resolve(charge);
+    } else {
+      promise.reject(err);
+    }
+  });
+  return promise;
+}
+
+function lookupStripeCustomer(customerId) {
+  var promise = new Parse.Promise();
+  stripe.customers.retrieve(customerId, function(err, customer){
+    if (err == null) {
+      promise.resolve(customer);
+    } else {
+      promise.reject(err);
+    }
+  });
+  return promise;
+}
+
 function findProductById(id) {
   var promise = new Parse.Promise();
-  var RequestClass = Parse.Object.extend("Product");
+  var RequestClass = Parse.Object.extend("Products");
   var request = new RequestClass();
   var query = new Parse.Query(request);
   query.get(id, {
@@ -316,6 +378,8 @@ function findRequestById(id) {
   query.include("captain");
   query.get(id, {
     success: function(object) {
+      console.log("findRequestByID found object");
+      console.log(object);
       promise.resolve(object);
     },
     error: function(error) {
