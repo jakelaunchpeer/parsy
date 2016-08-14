@@ -106,6 +106,10 @@ Parse.Cloud.define('getAllRequests', function(request, response){
   query.include("requester");
   query.include("captain");
   query.include("product");
+  query.exists("cancelled");
+  query.equalTo(false, "cancelled");
+  query.doesNotExist("captain"); 
+  
   query.find({
     success: function(results) {
       response.success(results);
