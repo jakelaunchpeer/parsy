@@ -110,6 +110,7 @@ Parse.Cloud.define('getAllRequests', function(request, response){
 
   query.find({
     success: function(results) {
+      console.log(results);
       response.success(results);
     }, 
     error: function(error) {
@@ -200,7 +201,7 @@ Parse.Cloud.define('createCharge', function(request, response) {
     console.log(userRequest.get("dropoffTime"));
     console.log(new Date(userRequest.get("dropoffTime")) - new Date(userRequest.get("pickupTime")));
     var totalTime = (new Date(userRequest.get("dropoffTime")) - new Date(userRequest.get("pickupTime")))/1000/60/60;
-    var chargeTotal = Math.round(totalTime * product.get("price")*100)/100;
+    var chargeTotal = (Math.round(totalTime * product.get("price")*100)/100) + getFees();
     charge.set("totalCharge", chargeTotal);
     return charge.save();
   }).then(function(chargeObject){
@@ -343,8 +344,8 @@ function chargePassenger(amount, customerId) {
   var promise = new Parse.Promise();
   // lookup user on stripe and verify they have a valid payment method.
   // stripe requires all charges to be converted to "cents"
-  var surcharge = 40;
-  var chargeInCents = Math.floor((amount+surcharge) * 100);
+  
+  var chargeInCents = Math.floor((amount) * 100);
   stripe.charges.create({
     amount:chargeInCents,
     currency: "usd",
@@ -436,4 +437,8 @@ function findUserById(id) {
   });
 
   return promise;
+}
+
+function getFees() {
+  return 40;
 }
